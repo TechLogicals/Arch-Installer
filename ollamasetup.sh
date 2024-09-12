@@ -74,7 +74,7 @@ install_gpu_drivers() {
 install_models() {
     local models=("llama2" "codellama" "mistral" "vicuna" "orca-mini" "neural-chat")
     local selected=()
-
+    mkdir ~/.ollama
     echo -e "${BLUE}Select models to install (use space to select, enter to confirm):${NC}"
     PS3="Enter the number of your choice (or 0 when done): "
     select model in "${models[@]}" "Done"; do
@@ -97,7 +97,6 @@ install_models() {
 configure_ollama() {
     echo -e "${BLUE}Configuring Ollama...${NC}"
     # Create a basic configuration file
-    mkdir ~/.ollama
     cat << EOF > ~/.ollama/config.yaml
 gpu: auto
 models_path: ~/.ollama/models
