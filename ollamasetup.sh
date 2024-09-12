@@ -97,6 +97,7 @@ install_models() {
 configure_ollama() {
     echo -e "${BLUE}Configuring Ollama...${NC}"
     # Create a basic configuration file
+    mkdir ~/.ollama
     cat << EOF > ~/.ollama/config.yaml
 gpu: auto
 models_path: ~/.ollama/models
