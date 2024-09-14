@@ -1,21 +1,5 @@
 #!/bin/bash
 
-# SPDX-FileCopyrightText: 2016 - 2024 sudorook <daemon@nullcodon.com>
-#
-# SPDX-License-Identifier: GPL-3.0-or-later
-#
-# This program is free software: you can redistribute it and/or modify it
-# under the terms of the GNU General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option)
-# any later version.
-#
-# This program is distributed in the hope that it will be useful, but
-# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
-# for more details.
-#
-# You should have received a copy of the GNU General Public License along
-# with this program. If not, see <https://www.gnu.org/licenses/>.
 
 DIR="$(dirname "$0")"
 
@@ -658,6 +642,32 @@ function set_partitions {
   sync
 }
 
+FILESYSTEM_FORMAT="ext4"
+function ask_filesystem_format {
+  show_header "Filesystem format:"
+  local options=("Back" "ext4" "btrfs")
+  local option
+  select option in "${options[@]}"; do
+    case "${option}" in
+      "Back")
+        ask_partition_sizes
+        break
+        ;;
+      "ext4")
+        FILESYSTEM_FORMAT="ext4"
+        break
+        ;;
+      "btrfs")
+        FILESYSTEM_FORMAT="btrfs"
+        break
+        ;;
+      *)
+        show_warning "ERROR: Invalid selection."
+        ;;
+    esac
+  done
+}
+
 function format_partitions {
   case "${SCHEME}" in
     "LVM on LUKS")
@@ -735,10 +745,24 @@ function format_partitions {
     swapon "${SWAP_PARTITION}"
   fi
   if [ -b "${ROOT_PARTITION}" ]; then
-    mkfs.ext4 "${ROOT_PARTITION}"
-  fi
-  if [ -b "${HOME_PARTITION}" ]; then
-    mkfs.ext4 "${HOME_PARTITION}"
+  case "${FILESYSTEM_FORMAT}" in
+    "ext4")
+      mkfs.ext4 "${ROOT_PARTITION}"
+      ;;
+    "btrfs")
+      mkfs.btrfs "${ROOT_PARTITION}"
+      ;;
+  esac
+fi
+if [ -b "${HOME_PARTITION}" ]; then
+  case "${FILESYSTEM_FORMAT}" in
+    "ext4")
+      mkfs.ext4 "${HOME_PARTITION}"
+      ;;
+    "btrfs")
+      mkfs.btrfs "${HOME_PARTITION}"
+      ;;
+  esac
   fi
   if [ -b "${SHARE_PARTITION}" ]; then
     mkfs.vfat -F 32 -n SHARE "${SHARE_PARTITION}"
