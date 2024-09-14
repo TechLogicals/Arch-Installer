@@ -1,4 +1,6 @@
+alacritty
 bleachbit
+brave browser
 dconf-editor
 eog
 evince
@@ -26,5 +28,6 @@ mpv-mpris
 python-psutil
 syncthing
 transmission-gtk
+thorium-browser
 webp-pixbuf-loader
 xdg-utils
