@@ -1,22 +1,5 @@
 #!/bin/bash
 
-# SPDX-FileCopyrightText: 2016 - 2024 sudorook <daemon@nullcodon.com>
-#
-# SPDX-License-Identifier: GPL-3.0-or-later
-#
-# This program is free software: you can redistribute it and/or modify it
-# under the terms of the GNU General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option)
-# any later version.
-#
-# This program is distributed in the hope that it will be useful, but
-# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
-# for more details.
-#
-# You should have received a copy of the GNU General Public License along
-# with this program. If not, see <https://www.gnu.org/licenses/>.
-
 DIR="$(dirname "$0")"
 
 function install_gnome {
@@ -57,7 +40,7 @@ function install_gnome {
   show_info "Setting kitty as default terminal."
   gsettings set org.gnome.desktop.default-applications.terminal exec 'kitty'
 
-  show_info "Setting up gnome-shell font-size oveerrides."
+  show_info "Setting up gnome-shell font-size overrides."
   local gnomeshellcss="${DIR}/configs/gnome-shell.css"
   mkdir -p "${HOME}/.local/share/themes/Adwaita/gnome-shell"
   cp "${gnomeshellcss}" "${HOME}/.local/share/themes/Adwaita/gnome-shell/gnome-shell.css"
@@ -65,25 +48,13 @@ function install_gnome {
   ln -s Adwaita Adwaita-dark
   popd > /dev/null || exit
 
-  show_info "Creating Projects/ and Sync/ and setting gvfs icon metadata."
-  mkdir -p "${HOME}/Projects"
-  mkdir -p "${HOME}/Sync"
-  gio set "${HOME}/Projects/" -t string metadata::custom-icon-name folder-development
-  gio set "${HOME}/Sync/" -t string metadata::custom-icon-name folder-cloud
-
-  show_info "Disabling Templates/ and Public/ directories."
-  sudo sed -i "s/^TEMPLATES/#TEMPLATES/g" "${xdgdefaultconf}"
-  sudo sed -i "s/^PUBLICSHARE/#PUBLICSHARE/g" "${xdgdefaultconf}"
-  [ -d "${HOME}/Templates" ] && rmdir --ignore-fail-on-non-empty "${HOME}/Templates"
-  [ -d "${HOME}/Public" ] && rmdir --ignore-fail-on-non-empty "${HOME}/Public"
-  xdg-user-dirs-update
+  setup_common_directories
 }
 
 function install_cinnamon {
   local cinnamon="${DIR}/packages/cinnamon.list"
   local lightdmconf="/etc/lightdm/lightdm.conf"
   local gammastepini="${DIR}/configs/gammastep.ini"
-  local xdgdefaultconf="/etc/xdg/user-dirs.defaults"
 
   show_header "Setting up cinnamon desktop environment."
   check_installed "${cinnamon}"
@@ -136,23 +107,11 @@ function install_cinnamon {
   show_info "Setting kitty as default terminal."
   gsettings set org.cinnamon.desktop.default-applications.terminal exec 'kitty'
 
-  show_info "Creating Projects/ and Sync/ and setting gvfs icon metadata."
-  mkdir -p "${HOME}/Projects"
-  mkdir -p "${HOME}/Sync"
-  gio set "${HOME}/Projects/" -t string metadata::custom-icon-name folder-development
-  gio set "${HOME}/Sync/" -t string metadata::custom-icon-name folder-cloud
-
-  show_info "Disabling Templates/ and Public/ directories."
-  sudo sed -i "s/^TEMPLATES/#TEMPLATES/g" "${xdgdefaultconf}"
-  sudo sed -i "s/^PUBLICSHARE/#PUBLICSHARE/g" "${xdgdefaultconf}"
-  [ -d "${HOME}/Templates" ] && rmdir --ignore-fail-on-non-empty "${HOME}/Templates"
-  [ -d "${HOME}/Public" ] && rmdir --ignore-fail-on-non-empty "${HOME}/Public"
-  xdg-user-dirs-update
+  setup_common_directories
 }
 
 function install_kde {
   local kde="${DIR}/packages/kde.list"
-  local xdgdefaultconf="/etc/xdg/user-dirs.defaults"
 
   show_header "Setting up KDE desktop environment."
   check_installed "${kde}"
@@ -200,12 +159,104 @@ EOF
     "${kwconfig}" --file kglobalshortcutsrc --group "kitty.desktop" --key "_k_friendly_name" "kitty"
     "${kwconfig}" --file kglobalshortcutsrc --group "kitty.desktop" --key "_launch" "Ctrl+Alt+T,none,kitty"
 
-    show_info "Creating Projects/ and Sync/ and setting kio icon metadata."
-    mkdir -p "${HOME}/Projects"
-    mkdir -p "${HOME}/Sync"
+    show_info "Setting kio icon metadata for Projects/ and Sync/."
     "${kwconfig}" --file "${HOME}/Projects/.directory" --group 'Desktop Entry' --key 'Icon' 'folder-development'
     "${kwconfig}" --file "${HOME}/Sync/.directory" --group 'Desktop Entry' --key 'Icon' 'folder-cloud'
   fi
+
+  setup_common_directories
+}
+
+function install_cosmic {
+  local cosmic="${DIR}/packages/cosmic.list"
+
+  show_header "Setting up Cosmic desktop environment."
+  check_installed "${cosmic}"
+  show_success "Cosmic installed."
+
+  if ! test ${DESKTOP_SESSION+x}; then
+    export DESKTOP_SESSION="cosmic"
+  fi
+
+  show_info "Setting up Cosmic greeter."
+  if [ -f /etc/systemd/system/display-manager.service ]; then
+    if [[ "$(systemctl is-active cosmic-greeter)" = inactive ]]; then
+      local display_manager
+      display_manager="$(readlink -f /etc/systemd/system/display-manager.service)"
+      display_manager="${display_manager##*/}"
+      show_warning "Display manager already set to ${display_manager@Q}. Skipping Cosmic greeter."
+    fi
+  else
+    sudo systemctl enable cosmic-greeter.service
+  fi
+
+  show_info "Setting kitty as default terminal."
+  gsettings set org.gnome.desktop.default-applications.terminal exec 'kitty'
+
+  setup_common_directories
+}
+
+function install_hyprland {
+  local hyprland="${DIR}/packages/hyprland.list"
+
+  show_header "Setting up Hyprland desktop environment."
+  check_installed "${hyprland}"
+  show_success "Hyprland installed."
+
+  if ! test ${DESKTOP_SESSION+x}; then
+    export DESKTOP_SESSION="hyprland"
+  fi
+
+  show_info "Setting up Hyprland configuration."
+  mkdir -p "${HOME}/.config/hypr"
+  cp "${DIR}/configs/hyprland.conf" "${HOME}/.config/hypr/hyprland.conf"
+
+  show_info "Setting kitty as default terminal."
+  sed -i 's/^terminal =.*/terminal = kitty/' "${HOME}/.config/hypr/hyprland.conf"
+
+  setup_common_directories
+}
+
+function install_dwm {
+  local dwm="${DIR}/packages/dwm.list"
+
+  show_header "Setting up DWM desktop environment."
+  check_installed "${dwm}"
+  show_success "DWM installed."
+
+  if ! test ${DESKTOP_SESSION+x}; then
+    export DESKTOP_SESSION="dwm"
+  fi
+
+  show_info "Setting up DWM configuration."
+  mkdir -p "${HOME}/.dwm"
+  cp "${DIR}/configs/dwm-config.h" "${HOME}/.dwm/config.h"
+
+  show_info "Compiling and installing DWM."
+  git clone https://git.suckless.org/dwm "${HOME}/.dwm/dwm"
+  cd "${HOME}/.dwm/dwm" || exit
+  make
+  sudo make clean install
+
+  show_info "Setting up .xinitrc for DWM."
+  echo "exec dwm" > "${HOME}/.xinitrc"
+
+  show_info "Setting kitty as default terminal."
+  sed -i 's/^static const char \*termcmd\[\] = { "st", NULL };/static const char *termcmd[] = { "kitty", NULL };/' "${HOME}/.dwm/config.h"
+
+  setup_common_directories
+}
+
+function setup_common_directories {
+  local xdgdefaultconf="/etc/xdg/user-dirs.defaults"
+
+  show_info "Creating Projects/ and Sync/ directories."
+  mkdir -p "${HOME}/Projects"
+  mkdir -p "${HOME}/Sync"
+
+  show_info "Setting gvfs icon metadata for Projects/ and Sync/."
+  gio set "${HOME}/Projects/" -t string metadata::custom-icon-name folder-development
+  gio set "${HOME}/Sync/" -t string metadata::custom-icon-name folder-cloud
 
   show_info "Disabling Templates/ and Public/ directories."
   sudo sed -i "s/^TEMPLATES/#TEMPLATES/g" "${xdgdefaultconf}"
@@ -219,7 +270,7 @@ function 02-desktop {
   show_question "Desktop: what do you want to install?"
   show_info "Main\n ${ENDBRANCH} Desktop (Hit ENTER to see options again.)"
 
-  local options=("Back" "All" "GNOME" "Cinnamon" "KDE")
+  local options=("Back" "All" "GNOME" "Cinnamon" "KDE" "Cosmic" "Hyprland" "DWM")
   local option
   select option in "${options[@]}"; do
     case "${option}" in
@@ -230,6 +281,9 @@ function 02-desktop {
         install_gnome
         install_cinnamon
         install_kde
+        install_cosmic
+        install_hyprland
+        install_dwm
         show_info "Main\n ${ENDBRANCH} Desktop (Hit ENTER to see options again.)"
         ;;
       "GNOME")
@@ -242,6 +296,18 @@ function 02-desktop {
         ;;
       "KDE")
         install_kde
+        show_info "Main\n ${ENDBRANCH} Desktop (Hit ENTER to see options again.)"
+        ;;
+      "Cosmic")
+        install_cosmic
+        show_info "Main\n ${ENDBRANCH} Desktop (Hit ENTER to see options again.)"
+        ;;
+      "Hyprland")
+        install_hyprland
+        show_info "Main\n ${ENDBRANCH} Desktop (Hit ENTER to see options again.)"
+        ;;
+      "DWM")
+        install_dwm
         show_info "Main\n ${ENDBRANCH} Desktop (Hit ENTER to see options again.)"
         ;;
       *)

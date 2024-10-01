@@ -250,7 +250,8 @@ function ask_bootmode {
           break
           ;;
         "EFISTUB")
-          show_warning "Not supported yet..."
+          BOOTMODE="EFISTUB"
+          break
           ;;
         *)
           show_warning "ERROR: Invalid selection."
@@ -266,6 +267,29 @@ function ask_bootmode {
     fi
   fi
 }
+
+install_efistub() {
+  pacman -S --noconfirm efibootmgr
+  
+  # Get the UUID of the root partition
+  ROOT_UUID=$(blkid -s UUID -o value "${ROOT_PARTITION}")
+  
+  # Prepare the kernel parameters
+  KERNEL_PARAMS="root=UUID=${ROOT_UUID} rw quiet"
+  
+  # Add encryption parameters if using LUKS
+  if [[ "${SCHEME}" = "LVM on LUKS" ]]; then
+    CRYPT_UUID=$(blkid -s UUID -o value "${CRYPT_PARTITION}")
+    KERNEL_PARAMS="cryptdevice=UUID=${CRYPT_UUID}:cryptlvm ${KERNEL_PARAMS}"
+  fi
+  
+  # Create the EFI boot entry
+  efibootmgr --create --disk "${DEVICE}" --part 1 --label "Arch Linux" \
+    --loader /vmlinuz-linux \
+    --unicode "${KERNEL_PARAMS} initrd=\\initramfs-linux.img" \
+    --verbose
+}
+
 
 function sanitize_size_input {
   local value
@@ -1082,7 +1106,7 @@ function install_grub {
       show_error "ERROR: Missing root ${root_uuid}."
       exit 3
     fi
-    sed -i "s|^GRUB_CMDLINE_LINUX=[\"\"]*|GRUB_CMDLINE_LINUX=\"${cmdline}\"|g" /etc/default/grub
+    sed -i "s|^GRUB_CMDLINE_LINUX=[\"]*|GRUB_CMDLINE_LINUX=\"${cmdline}\"|g" /etc/default/grub
   fi
 
   if [ -n "${crypt_uuid}" ]; then

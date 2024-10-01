@@ -1,22 +1,5 @@
 #!/bin/bash
 
-# SPDX-FileCopyrightText: 2016 - 2024 sudorook <daemon@nullcodon.com>
-#
-# SPDX-License-Identifier: GPL-3.0-or-later
-#
-# This program is free software: you can redistribute it and/or modify it
-# under the terms of the GNU General Public License as published by the Free
-# Software Foundation, either version 3 of the License, or (at your option)
-# any later version.
-#
-# This program is distributed in the hope that it will be useful, but
-# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-# or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License
-# for more details.
-#
-# You should have received a copy of the GNU General Public License along
-# with this program. If not, see <https://www.gnu.org/licenses/>.
-
 set -euo pipefail
 
 DIR="$(dirname "$0")"
@@ -96,7 +79,8 @@ function main {
     SCHEME="${SCHEME}" DEVICE="${DEVICE}" \
       arch-chroot /mnt /bin/bash -c "install_gummiboot"
   elif [[ "${BOOTMODE}" = "EFISTUB" ]]; then
-    show_warning "Not supported yet..."
+    SCHEME="${SCHEME}" DEVICE="${DEVICE}" ROOT_PARTITION="${ROOT_PARTITION}" CRYPT_PARTITION="${CRYPT_PARTITION}" \
+      arch-chroot /mnt /bin/bash -c "install_efistub"
   fi
   unmount_install
   show_success "Done! Reboot now."
@@ -113,8 +97,7 @@ if ! check_install_commands; then
   install_dependencies
 fi
 
-#
-# GO!!!
+
 #
 
 main
